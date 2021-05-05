@@ -121,6 +121,27 @@ CREATE TABLE public.ship
     CONSTRAINT ship_transpcost_check CHECK (transpcost > 0::numeric)
 );
 
+CREATE TABLE public.shipincruise
+(
+    cruiseid integer NOT NULL,
+    shipid integer NOT NULL,
+    captainid integer NOT NULL,
+    CONSTRAINT shipincruise_pkey PRIMARY KEY (cruiseid, shipid),
+    CONSTRAINT shipincruise_cruiseid_captainid_key UNIQUE (cruiseid, captainid),
+    CONSTRAINT shipincruise_captainid_fkey FOREIGN KEY (captainid)
+        REFERENCES public.captain (captainid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT shipincruise_cruiseid_fkey FOREIGN KEY (cruiseid)
+        REFERENCES public.cruise (cruiseid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT shipincruise_shipid_fkey FOREIGN KEY (shipid)
+        REFERENCES public.ship (shipid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+);
+
 CREATE TABLE public.client
 (
     clientid integer NOT NULL DEFAULT nextval('client_clientid_seq'::regclass),
