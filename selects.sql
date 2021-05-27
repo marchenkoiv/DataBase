@@ -18,45 +18,47 @@ LEFT JOIN shipincruise
 ON shipincruise.shipid=ship.shipid
 GROUP BY ship.shipid
 --2
-WITH carg AS (
-	SELECT DISTINCT portincruise.cruiseid as cruiseid,
-		   COALESCE (sum(shipmanifest.totalcost), 0) as totalcost
-	FROM portincruise
-	INNER JOIN shipmanifest
-	ON portincruise.numberincruise = shipmanifest.fromport
-	WHERE shipmanifest.paymentdate is not NULL
-	GROUP BY portincruise.cruiseid
-),
-pass AS (
-	SELECT DISTINCT portincruise.cruiseid as cruiseid,
-		   COALESCE (sum(ticket.ticketcost), 0) as totalcost
-	FROM portincruise
-	INNER JOIN ticket
-	ON portincruise.numberincruise = ticket.fromport
-	WHERE ticket.paymentdate is not NULL
-	GROUP BY portincruise.cruiseid
+WITH cap AS(
+SELECT captain.captainid,
+	count (DISTINCT shipincruise.cruiseid) as "num"
+	FROM captain
+	INNER JOIN shipincruise
+	ON captain.captainid=shipincruise.captainid
+	GROUP BY captain.captainid
+), carg AS(
+SELECT ship.shipid
+	FROM ship
+	WHERE ship.shiptype LIKE 'carg'
+), pass AS(
+SELECT ship.shipid
+	FROM ship
+	WHERE ship.shiptype LIKE 'pass'
 )
-SELECT DISTINCT cruise.cruiseid,
-	   			cruise.depdate,
-	   			cruise.ardate,
-	   			cruise.distance,
-	   			cruise.warships,
-	   			(count (DISTINCT portincruise.numberincruise)) as "number of ports",
-				count (DISTINCT shipincruise.shipid) + cruise.warships as "number of ships",
-				COALESCE (pass.totalcost, 0) as "profit pass",
-				COALESCE (carg.totalcost, 0) as "profit carg",
-				COALESCE (pass.totalcost, 0) + COALESCE (carg.totalcost, 0) as "total profit"
-FROM cruise
-LEFT JOIN portincruise --INNER
-ON cruise.cruiseid = portincruise.cruiseid
-LEFT JOIN shipincruise --INNER
-ON cruise.cruiseid = shipincruise.cruiseid
+SELECT  captain.captainid,
+		captain.lname,
+		captain.fname,
+		captain.patr,
+		count(DISTINCT carg.shipid) as "carg",
+		count(DISTINCT pass.shipid) as "pass",
+		count(portincruise.numberincruise) as "ports",
+		count(DISTINCT port.countrycode) as "countries"
+FROM captain
+INNER JOIN cap
+ON cap.captainid=captain.captainid
+INNER JOIN shipincruise
+ON captain.captainid=shipincruise.captainid
 LEFT JOIN carg
-ON cruise.cruiseid = carg.cruiseid
+ON shipincruise.shipid=carg.shipid
 LEFT JOIN pass
-ON cruise.cruiseid = pass.cruiseid
-WHERE cruise.depdate > current_date - INTERVAL '1 year'
-GROUP BY cruise.cruiseid, pass.totalcost, carg.totalcost
+ON shipincruise.shipid=pass.shipid
+INNER JOIN cruise
+ON cruise.cruiseid = shipincruise.cruiseid
+INNER JOIN portincruise
+ON portincruise.cruiseid = cruise.cruiseid
+INNER JOIN port
+ON portincruise.portid = port.portid
+WHERE cap.num = (SELECT max(cap.num) FROM cap)
+GROUP BY captain.captainid
 
 --3
 WITH carg AS (
