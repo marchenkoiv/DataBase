@@ -16,7 +16,7 @@ LEFT JOIN shipmanifestrow
 ON shipmanifestrow.manifestid=shipmanifest.manifestid
 LEFT JOIN shipincruise
 ON shipincruise.shipid=ship.shipid
-GROUP BY ship.shipid
+GROUP BY ship.shipid;
 --2
 WITH cap AS(
 SELECT captain.captainid,
@@ -58,7 +58,42 @@ ON portincruise.cruiseid = cruise.cruiseid
 INNER JOIN port
 ON portincruise.portid = port.portid
 WHERE cap.num = (SELECT max(cap.num) FROM cap)
-GROUP BY captain.captainid
+GROUP BY captain.captainid;
+
+--2/2
+WITH cap AS(
+SELECT captain.captainid,
+	count (DISTINCT shipincruise.cruiseid) as "num",
+	count(portincruise.numberincruise) as "ports",
+	count(DISTINCT port.countrycode) as "countries"
+	FROM captain
+	INNER JOIN shipincruise
+	ON captain.captainid=shipincruise.captainid
+	INNER JOIN cruise
+	ON cruise.cruiseid = shipincruise.cruiseid
+	INNER JOIN portincruise
+	ON portincruise.cruiseid = cruise.cruiseid
+	INNER JOIN port
+	ON portincruise.portid = port.portid
+	GROUP BY captain.captainid
+)
+SELECT  captain.captainid,
+		captain.lname,
+		captain.fname,
+		captain.patr,
+		max(cap.num) - count(DISTINCT ship.shipid) as "carg",
+		count(DISTINCT ship.shipid) as "pass",
+		cap.ports,
+		cap.countries
+FROM captain
+INNER JOIN cap
+ON cap.captainid=captain.captainid
+INNER JOIN shipincruise
+ON captain.captainid=shipincruise.captainid
+LEFT JOIN ship
+ON shipincruise.shipid=ship.shipid
+WHERE cap.num = (SELECT max(cap.num) FROM cap) and ship.shiptype = 'pass'
+GROUP BY captain.captainid, cap.ports, cap.countries;
 
 --3
 WITH carg AS (
@@ -119,7 +154,7 @@ ON client.clientid = ticket.clientid and ticket.paymentdate is not NULL
 INNER JOIN portincruise --LEFT
 ON portincruise.numberincruise = ticket.fromport or portincruise.numberincruise = shipmanifest.fromport
 GROUP BY client.clientid
-ORDER BY client.clientid
+ORDER BY client.clientid;
 --5
 WITH all_reasons as
 		(SELECT  EXTRACT(YEAR FROM actofdecommission.decommissiondate) as "year",
@@ -146,5 +181,5 @@ SELECT all_reasons.year,
 FROM all_reasons
 INNER JOIN popular
 ON all_reasons.year = popular.year
-GROUP BY all_reasons.year, popular.reason
+GROUP BY all_reasons.year, popular.reason;
 
